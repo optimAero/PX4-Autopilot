@@ -101,24 +101,24 @@ jobs:
             make px4_sitl_default
             make px4_fmu-v6x_default
 
-      # - name: Export Container Image
-      #   uses: docker/build-push-action@v6
-      #   with:
-      #     context: Tools/setup
-      #     # tags: ${{ steps.image_name.outputs.image_name }}
-      #     tags: ${{ steps.meta.outputs.tags }}
-      #     push: false
-      #     labels: ${{ steps.meta.outputs.labels }}
-      #     platforms: linux/${{ matrix.arch == 'x64' && 'amd64' || 'arm64' }}
-      #     outputs: type=docker,dest=${{ runner.temp }}/px4-builder-image-${{ matrix.arch }}.tar
-      #     cache-from: type=gha
-      #     cache-to: type=gha,mode=max
+      - name: Export Container Image
+        uses: docker/build-push-action@v6
+        with:
+          context: Tools/setup
+          # tags: ${{ steps.image_name.outputs.image_name }}
+          tags: ${{ steps.meta.outputs.tags }}
+          push: false
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/${{ matrix.arch == 'x64' && 'amd64' || 'arm64' }}
+          outputs: type=docker,dest=${{ runner.temp }}/px4-builder-image-${{ matrix.arch }}.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      # - name: Upload Container Image
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: container-export-${{ matrix.arch }}
-      #     path: ${{ runner.temp }}/px4-builder-image-${{ matrix.arch }}.tar
+      - name: Upload Container Image
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-export-${{ matrix.arch }}
+          path: ${{ runner.temp }}/px4-builder-image-${{ matrix.arch }}.tar
 
   push:
     name: Publish Containers in Registry
@@ -132,25 +132,11 @@ jobs:
           submodules: false
           fetch-depth: 0
 
-      # - name: Download Container Images
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     pattern: container-export-*
-      #     path: ${{ runner.temp }}
-
-      - name: Push container image
-        uses: docker/build-push-action@v6
-        # if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      - name: Download Container Images
+        uses: actions/download-artifact@v4
         with:
-          context: Tools/setup
-          tags: ${{ needs.build.outputs.tags }}
-          labels: ${{ needs.build.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          provenance: mode=max
-          push: false
-          load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          pattern: container-export-*
+          path: ${{ runner.temp }}
 
       - name: Setup tmate session
         # if: ${{ failure() }}
