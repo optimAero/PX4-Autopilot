@@ -23,9 +23,9 @@ jobs:
     runs-on: [runs-on,"runner=8cpu-linux-${{ matrix.arch }}","image=ubuntu24-full-${{ matrix.arch }}","run-id=${{ github.run_id }}",spot=false,extras=s3-cache]
     outputs:
       px4_version: ${{ steps.px4_version.outputs.px4_version }}
-    #   tags: ${{ steps.meta.outputs.tags }}
-    #   labels: ${{ steps.meta.outputs.labels }}
-    #   metadata: ${{ steps.docker.outputs.metadata }}
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+      metadata: ${{ steps.docker.outputs.metadata }}
       image_name: ${{ steps.image_name.outputs.image_name }}
     steps:
       - uses: runs-on/action@v1
@@ -101,26 +101,27 @@ jobs:
             make px4_sitl_default
             make px4_fmu-v6x_default
 
-      - name: Export Container Image
-        uses: docker/build-push-action@v6
-        with:
-          context: Tools/setup
-          # tags: ${{ steps.image_name.outputs.image_name }}
-          tags: ${{ steps.meta.outputs.tags }}
-          push: false
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/${{ matrix.arch == 'x64' && 'amd64' || 'arm64' }}
-          outputs: type=docker,dest=${{ runner.temp }}/px4-builder-image-${{ matrix.arch }}.tar
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      # - name: Export Container Image
+      #   uses: docker/build-push-action@v6
+      #   with:
+      #     context: Tools/setup
+      #     # tags: ${{ steps.image_name.outputs.image_name }}
+      #     tags: ${{ steps.meta.outputs.tags }}
+      #     push: false
+      #     labels: ${{ steps.meta.outputs.labels }}
+      #     platforms: linux/${{ matrix.arch == 'x64' && 'amd64' || 'arm64' }}
+      #     outputs: type=docker,dest=${{ runner.temp }}/px4-builder-image-${{ matrix.arch }}.tar
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=max
 
-      - name: Upload Container Image
-        uses: actions/upload-artifact@v4
-        with:
-          name: container-export-${{ matrix.arch }}
-          path: ${{ runner.temp }}/px4-builder-image-${{ matrix.arch }}.tar
+      # - name: Upload Container Image
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: container-export-${{ matrix.arch }}
+      #     path: ${{ runner.temp }}/px4-builder-image-${{ matrix.arch }}.tar
 
   push:
+    name: Publish Containers in Registry
     runs-on: [runs-on,"runner=8cpu-linux-x64","image=ubuntu24-full-x64","run-id=${{ github.run_id }}",spot=false,extras=s3-cache]
     needs: build
     steps:
@@ -131,17 +132,24 @@ jobs:
           submodules: false
           fetch-depth: 0
 
-      - name: Download x64 Container Image
-        uses: actions/download-artifact@v4
-        with:
-          name: container-export-x64
-          path: ${{ runner.temp }}
+      # - name: Download Container Images
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     pattern: container-export-*
+      #     path: ${{ runner.temp }}
 
-      - name: Download x86 Container Image
-        uses: actions/download-artifact@v4
+      - name: Push container image
+        uses: docker/build-push-action@v6
+        # if: ${{ startsWith(github.ref, 'refs/tags/') }}
         with:
-          name: container-export-x86
-          path: ${{ runner.temp }}
+          context: Tools/setup
+          tags: ${{ needs.build.outputs.tags }}
+          labels: ${{ needs.build.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          provenance: mode=max
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Setup tmate session
         # if: ${{ failure() }}
