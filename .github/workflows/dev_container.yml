@@ -104,8 +104,15 @@ jobs:
       - name: Build and export
         uses: docker/build-push-action@v6
         with:
-          tags: ${{ steps.image_name.outputs.image_name }}
+          context: Tools/setup
+          # tags: ${{ steps.image_name.outputs.image_name }}
+          tags: ${{ steps.meta.outputs.tags }}
+          push: false
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/${{ matrix.arch == 'x64' && 'amd64' || 'arm64' }}
           outputs: type=docker,dest=${{ runner.temp }}/px4-builder-image-${{ matrix.arch }}.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
